@@ -210,3 +210,4 @@ pyrightconfig.json
 
 uploads/*
 processed/*
+test/*
