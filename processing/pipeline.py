@@ -7,9 +7,9 @@ from typing import Callable, Optional
 
 from loguru import logger
 
-from processing.detect import detect_objects
+# from processing.detect import detect_objects
 from processing.stabilize import stabilize_video
-from processing.track import track_objects
+from processing.track import detect_and_track
 
 
 def run_pipeline(
@@ -51,16 +51,16 @@ def run_pipeline(
         output_dir, f"{input_path.split('/')[-1].split('.')[0]}_detected{ext}"
     )
     log("detecting", 0)
-    detect_objects(stabilized_path, detected_path)
+    detect_and_track(stabilized_path, detected_path, "./model/yolov11_obb.pt")
     log("detecting", 100)
 
     # ── Stage 3: Object Tracking ──
-    final_path = os.path.join(
-        output_dir, f"{input_path.split('/')[-1].split('.')[0]}_tracked{ext}"
-    )
-    log("tracking", 0)
-    track_objects(detected_path, final_path)
-    log("tracking", 100)
+    # final_path = os.path.join(
+    #     output_dir, f"{input_path.split('/')[-1].split('.')[0]}_tracked{ext}"
+    # )
+    # log("tracking", 0)
+    # track_objects(detected_path, final_path)
+    # log("tracking", 100)
 
     # Clean up intermediate files (keep only the final output)
     # for intermediate in [stabilized_path, detected_path]:

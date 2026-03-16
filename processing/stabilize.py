@@ -1,3 +1,5 @@
+import argparse
+
 import cv2
 import numpy as np
 from loguru import logger
@@ -181,7 +183,7 @@ def ecc_stabilize(input_path: str, output_path: str, output_size):
             )
             out.write(stabilized_frame)
 
-        except cv2.error as e:
+        except cv2.error:
             logger.warning(
                 f"Frame {frame_idx}: ECC failed to converge. Using previous matrix."
             )
@@ -213,9 +215,14 @@ def stabilize_video(input_path: str, output_path: str, method: str, output_size)
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file")
+    parser.add_argument("output_file")
+    args = parser.parse_args()
+
     stabilize_video(
-        "/Users/noah-mac-nb/Developer/TTGUI_Web/test/test_trimmed.mp4",
-        "/Users/noah-mac-nb/Developer/TTGUI_Web/test/test_trimmed_stabilized.mp4",
+        args.input_file,
+        args.output_file,
         "ecc",
         (1920, 1080),
     )

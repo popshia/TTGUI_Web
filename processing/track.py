@@ -1,80 +1,87 @@
-"""
-Object Tracking using Ultralytics YOLOv8 built-in tracker.
-
-Tracks detected objects across frames, assigns persistent IDs,
-and draws bounding boxes with track IDs on each frame.
-"""
+import argparse
 
 import cv2
 from ultralytics import YOLO
 
 
-def track_objects(input_path: str, output_path: str, model_name: str = 'yolov8n.pt', conf: float = 0.35):
-    """
-    Run object tracking on a video and write annotated output with track IDs.
+def detect_and_track(
+    input_video_path, output_video_path, model_path, show=False, plot_track=False
+):
+    # Load the YOLO26 model
+    model = YOLO(model_path)
 
-    Args:
-        input_path: Path to the input video file.
-        output_path: Path to write the tracked video.
-        model_name: YOLOv8 model to use (auto-downloads if needed).
-        conf: Confidence threshold for detections.
-    """
-    model = YOLO(model_name)
+    # Open the video file
+    cap = cv2.VideoCapture(input_video_path)
 
-    cap = cv2.VideoCapture(input_path)
-    if not cap.isOpened():
-        raise RuntimeError(f"Cannot open video: {input_path}")
+    # Get video properties for saving
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    # Set up the VideoWriter
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
+    # Loop through the video frames
+    while cap.isOpened():
+        # Read a frame from the video
+        success, frame = cap.read()
 
-    # Store trail history: { track_id: [(cx, cy), ...] }
-    trail_history: dict[int, list[tuple[int, int]]] = {}
-    trail_max_len = 50
+        if success:
+            # Run YOLO26 tracking on the frame, persisting tracks between frames
+            result = model.track(frame, persist=True, tracker="./bytetrack.yaml")[0]
 
-    frame_idx = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
+            # Visualize the result on the frame unconditionally
+            frame = result.plot(line_width=2, font_size=2, conf=False)
+
+            # Optional: Get the boxes and track IDs for custom track plotting
+            if plot_track:
+                boxes = result.boxes.xywh.cpu()
+                track_ids = result.boxes.id.int().cpu().tolist()
+
+                # Plot the tracks
+                for box, track_id in zip(boxes, track_ids):
+                    x, y, w, h = box
+                    track = track_history[track_id]
+                    track.append((float(x), float(y)))  # x, y center point
+                    if len(track) > 30:  # retain 30 tracks for 30 frames
+                        track.pop(0)
+
+                    # Draw the tracking lines
+                    points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
+                    cv2.polylines(
+                        frame,
+                        [points],
+                        isClosed=False,
+                        color=(230, 230, 230),
+                        thickness=10,
+                    )
+
+            # Display the annotated frame
+            if show:
+                cv2.imshow("YOLO30 Tracking", frame)
+
+            # Write the annotated frame to the output video
+            out.write(frame)
+
+            # Break the loop if 'q' is pressed
+            if show and cv2.waitKey(1) & 0xFF == ord("q"):
+                break
+        else:
+            # Break the loop if the end of the video is reached
             break
 
-        # Run tracking
-        results = model.track(frame, conf=conf, persist=True, verbose=False)
-        annotated = results[0].plot()
-
-        # Draw trails
-        if results[0].boxes.id is not None:
-            boxes = results[0].boxes.xywh.cpu().numpy()
-            track_ids = results[0].boxes.id.int().cpu().tolist()
-
-            for box, track_id in zip(boxes, track_ids):
-                cx, cy = int(box[0]), int(box[1])
-
-                if track_id not in trail_history:
-                    trail_history[track_id] = []
-                trail = trail_history[track_id]
-                trail.append((cx, cy))
-                if len(trail) > trail_max_len:
-                    trail.pop(0)
-
-                # Draw trail as fading polyline
-                for j in range(1, len(trail)):
-                    alpha = j / len(trail)
-                    color = (
-                        int(139 * alpha),   # blue channel
-                        int(92 * alpha),    # green channel
-                        int(246 * alpha),   # red channel  → purple-ish
-                    )
-                    thickness = max(1, int(3 * alpha))
-                    cv2.line(annotated, trail[j - 1], trail[j], color, thickness)
-
-        out.write(annotated)
-        frame_idx += 1
-
+    # Release the video capture and writer objects and close the display window
     cap.release()
     out.release()
-    print(f"[TRACK] Processed {frame_idx} frames → {output_path}")
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_file")
+    parser.add_argument("output_file")
+    parser.add_argument("model")
+    args = parser.parse_args()
+
+    detect_and_track(args.input_file, args.output_file, args.model)
