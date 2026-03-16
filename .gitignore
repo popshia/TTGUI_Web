@@ -210,5 +210,5 @@ pyrightconfig.json
 
 uploads/
 processed/
-processing/model/
+processing/models/*
 test/
