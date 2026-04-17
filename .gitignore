@@ -212,3 +212,4 @@ uploads/
 processed/
 processing/models/*
 test/
+uv.lock
