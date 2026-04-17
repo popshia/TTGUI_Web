@@ -64,7 +64,7 @@
 </template>
 
 <script>
-const STAGES = ['queued', 'stabilizing', 'detecting', 'tracking', 'emailing', 'done']
+const STAGES = ['queued', 'stabilizing', 'tracking', 'csv_postprocess', 'emailing', 'done']
 
 export default {
   name: 'JobStatus',
@@ -81,8 +81,8 @@ export default {
       pollTimer: null,
       steps: [
         { id: 'stabilizing', label: 'Stabilization', desc: 'Smoothing camera movement' },
-        { id: 'detecting', label: 'Object Detection', desc: 'Identifying objects in frames' },
-        { id: 'tracking', label: 'Object Tracking', desc: 'Following objects across frames' },
+        { id: 'tracking', label: 'Tracking', desc: 'Tracking objects in frames' },
+        { id: 'csv_postprocess', label: 'CSV Postprocessing', desc: 'Processing CSV data' },
         { id: 'emailing', label: 'Sending Email', desc: 'Delivering download link' },
       ],
     }

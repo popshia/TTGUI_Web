@@ -1,4 +1,5 @@
 import os
+import queue
 import threading
 import uuid
 
@@ -21,11 +22,12 @@ os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(config.PROCESSED_FOLDER, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# In-memory job store  { job_id: { status, stage, progress, error, email, filename } }
+# In-memory job store & Queue
 # ---------------------------------------------------------------------------
 jobs: dict = {}
+job_queue = queue.Queue()
 
-STAGES = ["queued", "stabilizing", "detecting", "tracking", "emailing", "done"]
+STAGES = ["queued", "stabilizing", "tracking", "csv_postprocess", "emailing", "done"]
 
 
 def allowed_file(filename: str) -> bool:
@@ -36,8 +38,26 @@ def allowed_file(filename: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Background worker
+# Background worker queue
 # ---------------------------------------------------------------------------
+def worker():
+    """Continuously processes jobs from the queue."""
+    while True:
+        job_id = job_queue.get()
+        if job_id is None:
+            break
+        try:
+            process_job(job_id)
+        except Exception as e:
+            print(f"Error processing job {job_id}: {e}")
+        finally:
+            job_queue.task_done()
+
+
+# Start a single background worker thread (limits concurrency to 1)
+threading.Thread(target=worker, daemon=True).start()
+
+
 def process_job(job_id: str):
     """Run the full pipeline in a background thread."""
     job = jobs[job_id]
@@ -103,9 +123,8 @@ def upload_video():
         "output_filename": None,
     }
 
-    # Start background processing
-    thread = threading.Thread(target=process_job, args=(job_id,), daemon=True)
-    thread.start()
+    # Add job to the queue
+    job_queue.put(job_id)
 
     return jsonify({"job_id": job_id}), 202
 

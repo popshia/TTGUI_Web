@@ -5,12 +5,12 @@ Processing Pipeline – orchestrates stabilization → detection → tracking.
 import os
 from typing import Callable, Optional
 
-import config
 from loguru import logger
 
+import config
 from processing.csv_postprocess import process_trajectory_file
 from processing.stabilize import stabilize_video
-from processing.track import track_and_ouput_csv
+from processing.track import track_and_output_csv
 
 
 def run_pipeline(
@@ -52,20 +52,20 @@ def run_pipeline(
         output_dir, f"{input_path.split('/')[-1].split('.')[0]}_detected{ext}"
     )
     raw_csv = os.path.join(output_dir, "raw.csv")
-    log("dracking object and output csv", 0)
-    track_and_ouput_csv(
+    log("tracking", 0)
+    track_and_output_csv(
         stabilized_path,
         tracked_path,
         config.MODEL_PATH,
         os.path.join(output_dir, raw_csv),
     )
-    log("dracking object and output csv", 100)
+    log("tracking", 100)
 
     # ── Stage 3: CSV file fixing ──
     processed_csv = os.path.join(output_dir, "processed.csv")
-    log("fixing csv file", 0)
+    log("csv_postprocess", 0)
     process_trajectory_file(raw_csv, processed_csv)
-    log("fixing csv file", 100)
+    log("csv_postprocess", 100)
 
     # Clean up intermediate files (keep only the final output)
     # for intermediate in [stabilized_path, raw_csv]:

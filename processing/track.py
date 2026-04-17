@@ -1,21 +1,122 @@
 import argparse
 import csv
-from collections import defaultdict
 
 import cv2
-import numpy as np
 import torch
-from loguru import logger
+
+# Monkey-patch ultralytics trackers to prevent Kalman filter from smoothing bounding boxes
+# This fixes the issue where OBBs get misaligned (width and height swap but smoothed) during 90-degree turns.
+import ultralytics.trackers.bot_sort as bot_sort
+import ultralytics.trackers.byte_tracker as byte_tracker
 from ultralytics import YOLO
 
 
-def track_and_ouput_csv(
+def _patch_trackers():
+    # Save a reference to the original, un-patched update function
+    original_botrack_update = bot_sort.BOTrack.update
+
+    # Define our custom, "patched" version of the update function
+    def patched_botrack_update(self, new_track, frame_id):
+        # 'new_track' contains the fresh, un-smoothed detection from YOLO.
+        # '_tlwh' stands for Top-Left-Width-Height. We copy this exact raw
+        # detection and store it in a new custom variable: '_latest_tlwh'.
+        self._latest_tlwh = new_track._tlwh.copy()
+        # Now that we've safely stored the raw detection, we pass the data
+        # back to the original update function so the Kalman Filter can do its
+        # math and keep the track alive.
+        original_botrack_update(self, new_track, frame_id)
+
+    # Overwrite the class's update method with our custom patched method.
+    bot_sort.BOTrack.update = patched_botrack_update
+
+    # Save a reference to the original re_activate function
+    original_botrack_reactivate = bot_sort.BOTrack.re_activate
+
+    # Define our custom patched re_activate function
+    def patched_botrack_reactivate(self, new_track, frame_id, new_id=False):
+        # Just like before, capture the raw detection box before the
+        # Kalman Filter touches it.
+        self._latest_tlwh = new_track._tlwh.copy()
+        # Call the original re_activate function to handle the underlying math
+        original_botrack_reactivate(self, new_track, frame_id, new_id)
+
+    # Overwrite the class's re_activate method with our custom one.
+    bot_sort.BOTrack.re_activate = patched_botrack_reactivate
+
+    # Define a custom property function that will replace the original 'tlwh'
+    def patched_botrack_tlwh(self):
+        # Check if we saved a raw detection in '_latest_tlwh' (which we
+        # did in our patched update/reactivate methods).
+        if hasattr(self, "_latest_tlwh"):
+            # If it exists, return the RAW detection box, completely
+            # bypassing the Kalman Filter!
+            return self._latest_tlwh.copy()
+        # If it doesn't exist (like on the very first frame before an update),
+        # just return the starting raw detection '_tlwh'.
+        return self._tlwh.copy()
+
+    # Overwrite the 'tlwh' property on the BOTrack class using our custom function.
+    bot_sort.BOTrack.tlwh = property(patched_botrack_tlwh)
+
+    # patch strack also
+    original_strack_update = byte_tracker.STrack.update
+
+    def patched_strack_update(self, new_track, frame_id):
+        self._latest_tlwh = new_track._tlwh.copy()
+        original_strack_update(self, new_track, frame_id)
+
+    byte_tracker.STrack.update = patched_strack_update
+    original_strack_reactivate = byte_tracker.STrack.re_activate
+
+    def patched_strack_reactivate(self, new_track, frame_id, new_id=False):
+        self._latest_tlwh = new_track._tlwh.copy()
+        original_strack_reactivate(self, new_track, frame_id, new_id)
+
+    byte_tracker.STrack.re_activate = patched_strack_reactivate
+
+    def patched_strack_tlwh(self):
+        if hasattr(self, "_latest_tlwh"):
+            return self._latest_tlwh.copy()
+        return self._tlwh.copy()
+
+    byte_tracker.STrack.tlwh = property(patched_strack_tlwh)
+
+    # Class-aware tracking patch for BOTSORT
+    original_botsort_get_dists = bot_sort.BOTSORT.get_dists
+
+    def patched_botsort_get_dists(self, tracks, detections):
+        dists = original_botsort_get_dists(self, tracks, detections)
+        # Apply class penalty: if classes don't match, set distance to 1.0 (max distance)
+        for i, track in enumerate(tracks):
+            for j, det in enumerate(detections):
+                if track.cls != det.cls:
+                    dists[i, j] = 1.0
+        return dists
+
+    bot_sort.BOTSORT.get_dists = patched_botsort_get_dists
+
+    # Class-aware tracking patch for ByteTrack
+    original_bytetrack_get_dists = byte_tracker.BYTETracker.get_dists
+
+    def patched_bytetrack_get_dists(self, tracks, detections):
+        dists = original_bytetrack_get_dists(self, tracks, detections)
+        for i, track in enumerate(tracks):
+            for j, det in enumerate(detections):
+                if track.cls != det.cls:
+                    dists[i, j] = 1.0
+        return dists
+
+    byte_tracker.BYTETracker.get_dists = patched_bytetrack_get_dists
+
+
+_patch_trackers()
+
+
+def track_and_output_csv(
     input_video_path,
     output_video_path,
     model_path,
-    output_csv_path=None,
-    show=False,
-    plot_track=False,
+    output_csv_path,
 ):
     # Load the YOLO26 model
     model = YOLO(model_path)
@@ -32,14 +133,11 @@ def track_and_ouput_csv(
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
-    # Store the track history
-    track_history = defaultdict(lambda: [])
-
     # Store information for CSV export
     track_info = {}
     frame_index = 0
-
     # Loop through the video frames
+
     while cap.isOpened():
         # Read a frame from the video
         success, frame = cap.read()
@@ -89,39 +187,9 @@ def track_and_ouput_csv(
             # Visualize the result on the frame unconditionally
             frame = result.plot(line_width=2, font_size=2, conf=False)
 
-            # Optional: Get the boxes and track IDs for custom track plotting
-            if plot_track:
-                boxes = result.boxes.xywh.cpu()
-                track_ids = result.boxes.id.int().cpu().tolist()
-
-                # Plot the tracks
-                for box, track_id in zip(boxes, track_ids):
-                    x, y, w, h = box
-                    track = track_history[track_id]
-                    track.append((float(x), float(y)))  # x, y center point
-                    if len(track) > 30:  # retain 30 tracks for 30 frames
-                        track.pop(0)
-
-                    # Draw the tracking lines
-                    points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
-                    cv2.polylines(
-                        frame,
-                        [points],
-                        isClosed=False,
-                        color=(230, 230, 230),
-                        thickness=10,
-                    )
-
-            # Display the annotated frame
-            if show:
-                cv2.imshow("YOLO26 Tracking", frame)
-
             # Write the annotated frame to the output video
             out.write(frame)
 
-            # Break the loop if 'q' is pressed
-            if show and cv2.waitKey(1) & 0xFF == ord("q"):
-                break
         else:
             # Break the loop if the end of the video is reached
             break
@@ -129,7 +197,6 @@ def track_and_ouput_csv(
     # Release the video capture and writer objects and close the display window
     cap.release()
     out.release()
-    cv2.destroyAllWindows()
 
     if output_csv_path:
         with open(output_csv_path, "w", newline="") as f:
@@ -148,10 +215,6 @@ def track_and_ouput_csv(
                     row.extend(info["coords"][frame_num])
                 writer.writerow(row)
 
-    logger.info(
-        f"[TRACKING] Saved tracked video to {output_video_path}, raw csv to {output_csv_path}"
-    )
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -161,6 +224,4 @@ if __name__ == "__main__":
     parser.add_argument("csv")
     args = parser.parse_args()
 
-    track_and_ouput_csv(
-        args.input_file, args.output_file, args.model, output_csv_path=args.csv
-    )
+    track_and_output_csv(args.input_file, args.output_file, args.model, args.csv)

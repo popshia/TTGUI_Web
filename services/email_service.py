@@ -1,6 +1,7 @@
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 import config
 
 
@@ -24,8 +25,8 @@ def send_result_email(to_email: str, download_url: str, job_id: str):
         </p>
         <ul style="line-height: 2; color: #a0a0c0;">
           <li>✅ Video Stabilization</li>
-          <li>✅ Object Detection</li>
           <li>✅ Object Tracking</li>
+          <li>✅ CSV Postprocessing</li>
         </ul>
         <p style="line-height: 1.7; color: #c0c0d0;">
           Click the button below to download your processed video:
@@ -45,10 +46,10 @@ def send_result_email(to_email: str, download_url: str, job_id: str):
     </html>
     """
 
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = config.SMTP_USER
-    msg['To'] = to_email
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = config.SMTP_USER
+    msg["To"] = to_email
 
     # Plain-text fallback
     text_body = (
@@ -56,8 +57,8 @@ def send_result_email(to_email: str, download_url: str, job_id: str):
         f"Download it here: {download_url}\n\n"
         f"Stages completed: Stabilization, Object Detection, Object Tracking."
     )
-    msg.attach(MIMEText(text_body, 'plain'))
-    msg.attach(MIMEText(html_body, 'html'))
+    msg.attach(MIMEText(text_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
 
     with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
         server.ehlo()
