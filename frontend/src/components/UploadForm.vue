@@ -292,7 +292,7 @@ export default {
 }
 
 .form-title {
-    font-size: 28px;
+    font-size: 31px;
     font-weight: 700;
     color: var(--text-primary);
     letter-spacing: -0.3px;
@@ -339,7 +339,7 @@ export default {
 
 /* Drop zone */
 .drop-zone {
-    border: 2px dashed #c5cdd5;
+    border: 2px dashed var(--border);
     border-radius: var(--radius-md);
     padding: 32px 20px;
     text-align: center;
@@ -348,7 +348,7 @@ export default {
         border-color 0.2s,
         background 0.2s;
     margin-bottom: 20px;
-    background: transparent;
+    background: rgba(129, 124, 124, 0.08);
     /* Keep the box the same height before and while uploading */
     min-height: 210px;
     display: flex;
@@ -373,8 +373,8 @@ export default {
 /* Uploading state — no longer a click/drop target */
 .drop-zone--uploading,
 .drop-zone--uploading:hover {
-    border-color: #c5cdd5;
-    background: transparent;
+    border-color: var(--border);
+    background: rgba(129, 124, 124, 0.08);
     cursor: default;
 }
 

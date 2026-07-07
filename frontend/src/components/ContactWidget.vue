@@ -83,6 +83,17 @@
 
             <!-- Sent confirmation state -->
             <div v-else class="contact-success">
+                <div class="contact-success__check">
+                    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+                        <path
+                            d="M8 15L13 20L22 10"
+                            stroke="currentColor"
+                            stroke-width="2.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                    </svg>
+                </div>
                 <p>
                     We've received your message and will reply to you as
                     soon as possible.
@@ -207,21 +218,21 @@ export default {
     position: fixed;
     bottom: 88px;
     right: 24px;
-    width: 320px;
+    width: 340px;
     max-width: calc(100vw - 48px);
-    background: var(--accent);
+    background: var(--bg-card);
     border-radius: var(--radius-lg);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    padding: 22px 20px 24px;
+    box-shadow: var(--shadow-card);
+    padding: 32px 28px;
     z-index: 1000;
 }
 
 .contact-title {
-    color: #ffffff;
-    font-size: 22px;
+    color: var(--text-primary);
+    font-size: 25px;
     font-weight: 700;
     text-align: center;
-    margin-bottom: 18px;
+    margin-bottom: 24px;
     letter-spacing: -0.2px;
 }
 
@@ -229,18 +240,18 @@ export default {
 .contact-form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 }
 
 .contact-input {
     width: 100%;
-    padding: 11px 14px;
-    background: #ffffff;
-    border: 1px solid transparent;
+    padding: 10px 16px;
+    background: var(--white);
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: 16px;
     outline: none;
     transition:
         box-shadow 0.2s ease,
@@ -252,8 +263,8 @@ export default {
 }
 
 .contact-input:focus {
-    border-color: #ffffff;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--accent-light);
 }
 
 .contact-input:disabled {
@@ -271,13 +282,14 @@ export default {
     width: 100%;
     padding: 12px;
     margin-top: 4px;
-    background: var(--accent-hover);
+    background: var(--accent);
     color: #ffffff;
     border: none;
     border-radius: var(--radius-md);
     font-family: var(--font-sans);
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 600;
+    letter-spacing: 0.2px;
     cursor: pointer;
     transition:
         background 0.2s ease,
@@ -285,7 +297,11 @@ export default {
 }
 
 .contact-send:hover:not(:disabled) {
-    background: #4f6068;
+    background: var(--accent-hover);
+}
+
+.contact-send:active:not(:disabled) {
+    background: var(--accent-active);
 }
 
 .contact-send:disabled {
@@ -294,8 +310,8 @@ export default {
 }
 
 .contact-error {
-    color: #fff;
-    background: rgba(220, 38, 38, 0.55);
+    color: var(--error);
+    background: var(--error-light);
     font-size: 12px;
     text-align: center;
     padding: 8px 10px;
@@ -306,15 +322,28 @@ export default {
 .contact-success {
     min-height: 220px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 20px;
     padding: 0 8px;
 }
 
+.contact-success__check {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--success-light);
+    color: var(--success);
+}
+
 .contact-success p {
-    color: #ffffff;
-    font-size: 15px;
-    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 16px;
+    font-weight: 500;
     line-height: 1.55;
     text-align: center;
 }
