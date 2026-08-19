@@ -120,7 +120,7 @@ cd ..
 ### 5. Run the server
 
 ```bash
-uv run app.py
+uv run gunicorn -w 1 --threads 8 --timeout 0 -b 0.0.0.0:5000 app:app
 ```
 
 The app will be available at `http://127.0.0.1:5000`.
