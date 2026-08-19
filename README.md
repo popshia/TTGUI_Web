@@ -84,17 +84,19 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
-| Variable              | Default                         | Description                                          |
-|-----------------------|---------------------------------|------------------------------------------------------|
-| `SECRET_KEY`          | `dev-secret-key-change-me`      | Flask session secret (also used for HMAC tokens)     |
-| `FLASK_DEBUG`         | `false`                         | Set to `true` in development to enable auto-reload and the interactive debugger |
-| `SERVER_HOST`         | `127.0.0.1`                     | Host to bind Flask                                   |
-| `SERVER_PORT`         | `5000`                          | Port to bind Flask                                   |
-| `SERVER_URL`          | `http://127.0.0.1:5000`         | Public URL used in email download links              |
-| `MAX_CONTENT_LENGTH`  | `10737418240` (10 GB)           | Maximum upload size in bytes                         |
-| `SMTP_USER`           | *(empty)*                       | Gmail address for sending result emails              |
-| `SMTP_PASSWORD`       | *(empty)*                       | Gmail App Password                                   |
-| `CONTACT_RECIPIENT`   | *(falls back to `SMTP_USER`)*   | Inbox that receives "Contact Us" submissions         |
+| Variable                          | Default                         | Description                                          |
+|-----------------------------------|---------------------------------|------------------------------------------------------|
+| `FLASK_APP`                       | `app.py`                        | Flask entry point module                             |
+| `FLASK_ENV`                       | `development`                   | Flask environment (set to `production` for deployment) |
+| `SECRET_KEY`                      | `dev-secret-key-change-me`      | Flask session secret (also used for HMAC tokens)     |
+| `SERVER_HOST`                     | `0.0.0.0`                       | Host to bind Flask                                   |
+| `SERVER_PORT`                     | `5000`                          | Port to bind Flask                                   |
+| `SERVER_URL`                      | `http://127.0.0.1:5000`         | Public URL used in email download links              |
+| `MAX_CONTENT_LENGTH`              | `10737418240` (10 GB)           | Maximum upload size in bytes                         |
+| `SMTP_USER`                       | *(empty)*                       | Gmail address for sending result emails              |
+| `SMTP_PASSWORD`                   | *(empty)*                       | Gmail App Password                                   |
+| `CONTACT_RECIPIENT`               | *(falls back to `SMTP_USER`)*   | Inbox that receives "Contact Us" submissions         |
+| `FREE_TIER_MAX_DURATION_SECONDS`  | `300`                           | Max analyzable video duration (seconds) for free-tier users |
 
 If `SMTP_USER` / `SMTP_PASSWORD` are not set, the email step is skipped and the download link (or contact submission) is logged to stdout instead.
 
